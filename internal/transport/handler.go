@@ -2,8 +2,10 @@ package transport
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
+	"transfers-api/internal/enums"
 	"transfers-api/internal/models"
 	"transfers-api/internal/services"
 )
@@ -16,62 +18,108 @@ func NewHandler(s *services.TransferService) *Handler {
 	return &Handler{svc: s}
 }
 
+type transferResponse struct {
+	ID         string  `json:"ID"`
+	SenderID   string  `json:"SenderID"`
+	ReceiverID string  `json:"ReceiverID"`
+	Currency   string  `json:"Currency"`
+	Amount     float64 `json:"Amount"`
+	State      string  `json:"State"`
+}
+
 func (h *Handler) HandleTransfers(w http.ResponseWriter, r *http.Request) {
-	// Establecemos el Header para que Postman sepa que recibe JSON
 	w.Header().Set("Content-Type", "application/json")
 
 	switch r.Method {
 	case http.MethodGet:
-		// 1. Verificamos si viene un ID en la URL: ?id=TX-001
 		id := r.URL.Query().Get("id")
+		senderID := r.URL.Query().Get("sender_id")
+
+		// Esta línea usa el paquete fmt. Si la borras, borra también el import.
+		fmt.Printf("DEBUG: Buscando por id='%s' o sender_id='%s'\n", id, senderID)
+
 		if id != "" {
 			t, err := h.svc.GetByID(id)
 			if err != nil {
 				http.Error(w, "Transfer not found", http.StatusNotFound)
 				return
 			}
-			json.NewEncoder(w).Encode(t)
-			return
+			res := transferResponse{
+				ID: t.ID, SenderID: t.SenderID, ReceiverID: t.ReceiverID,
+				Currency: t.Currency.String(), Amount: t.Amount, State: t.State,
+			}
+			json.NewEncoder(w).Encode(res)
+			return // Se detiene aquí si encontró por ID
 		}
 
-		// 2. Si no hay ID, listamos todos los registros
+		if senderID != "" {
+			list, err := h.svc.GetBySenderID(senderID)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			var finalResponse []transferResponse
+			for _, t := range list {
+				finalResponse = append(finalResponse, transferResponse{
+					ID: t.ID, SenderID: t.SenderID, ReceiverID: t.ReceiverID,
+					Currency: t.Currency.String(), Amount: t.Amount, State: t.State,
+				})
+			}
+			json.NewEncoder(w).Encode(finalResponse)
+			return // Se detiene aquí si filtró por SenderID
+		}
+
+		// Si llegamos aquí, es que no hay parámetros. Traemos todos.
 		list, err := h.svc.List()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		json.NewEncoder(w).Encode(list)
+		var finalResponse []transferResponse
+		for _, t := range list {
+			finalResponse = append(finalResponse, transferResponse{
+				ID: t.ID, SenderID: t.SenderID, ReceiverID: t.ReceiverID,
+				Currency: t.Currency.String(), Amount: t.Amount, State: t.State,
+			})
+		}
+		json.NewEncoder(w).Encode(finalResponse)
 
 	case http.MethodPost:
-		// Crear nueva transferencia
-		var t models.Transfer
-		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
-			// Enviamos el error real para saber si falló el JSON o el Enum
+		var req transferResponse
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid JSON: "+err.Error(), http.StatusBadRequest)
 			return
+		}
+		t := models.Transfer{
+			ID: req.ID, SenderID: req.SenderID, ReceiverID: req.ReceiverID,
+			Currency: enums.ParseCurrency(req.Currency), Amount: req.Amount, State: req.State,
 		}
 		if err := h.svc.Create(&t); err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
+		req.Currency = t.Currency.String()
 		w.WriteHeader(http.StatusCreated)
-		json.NewEncoder(w).Encode(t)
+		json.NewEncoder(w).Encode(req)
 
 	case http.MethodPut:
-		// Actualizar transferencia existente
-		var t models.Transfer
-		if err := json.NewDecoder(r.Body).Decode(&t); err != nil {
+		var req transferResponse
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			http.Error(w, "Invalid JSON", http.StatusBadRequest)
 			return
+		}
+		t := models.Transfer{
+			ID: req.ID, SenderID: req.SenderID, ReceiverID: req.ReceiverID,
+			Currency: enums.ParseCurrency(req.Currency), Amount: req.Amount, State: req.State,
 		}
 		if err := h.svc.Update(&t); err != nil {
 			http.Error(w, "Could not update: "+err.Error(), http.StatusNotFound)
 			return
 		}
-		json.NewEncoder(w).Encode(t)
+		json.NewEncoder(w).Encode(req)
 
 	case http.MethodDelete:
-		// Eliminar transferencia por ID: ?id=TX-001
 		id := r.URL.Query().Get("id")
 		if id == "" {
 			http.Error(w, "Query parameter 'id' is required", http.StatusBadRequest)
@@ -81,7 +129,6 @@ func (h *Handler) HandleTransfers(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Could not delete: "+err.Error(), http.StatusNotFound)
 			return
 		}
-		// 204 No Content es el estándar para deletes exitosos
 		w.WriteHeader(http.StatusNoContent)
 
 	default:

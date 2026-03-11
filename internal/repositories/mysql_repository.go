@@ -93,3 +93,20 @@ func (r *MySQLRepository) List() ([]*models.Transfer, error) {
 	}
 	return out, nil
 }
+
+// METODO DE TRANSACCIONES POR USUARIO
+func (r *MySQLRepository) GetBySenderID(senderID string) ([]*models.Transfer, error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	results := make([]*models.Transfer, 0)
+
+	for _, t := range r.store {
+		if t.SenderID == senderID {
+			copy := *t
+			results = append(results, &copy)
+		}
+	}
+
+	return results, nil
+}

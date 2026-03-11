@@ -9,4 +9,5 @@ type Repository interface {
 	Update(t *models.Transfer) error
 	Delete(id string) error
 	List() ([]*models.Transfer, error)
+	GetBySenderID(senderID string) ([]*models.Transfer, error)
 }

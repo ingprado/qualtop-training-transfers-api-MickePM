@@ -45,3 +45,8 @@ func (s *TransferService) Delete(id string) error {
 func (s *TransferService) List() ([]*models.Transfer, error) {
 	return s.repo.List()
 }
+
+func (s *TransferService) GetBySenderID(senderID string) ([]*models.Transfer, error) {
+
+	return s.repo.GetBySenderID(senderID)
+}
