@@ -11,7 +11,9 @@ RUN go mod download
 COPY . .
 
 RUN CGO_ENABLED=0 go build -o app ./cmd/app
-
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    --mount=type=cache,target=/go/pkg/mod \
+    CGO_ENABLED=0 go build -o /server ./cmd/app/main.go
 
 # ---------- RUNTIME ----------
 FROM scratch
