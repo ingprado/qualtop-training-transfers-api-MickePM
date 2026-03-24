@@ -1,30 +1,43 @@
 package services
 
 import (
+	"encoding/json"
 	"errors"
-
+	"fmt"
 	"transfers-api/internal/models"
+	"transfers-api/internal/queue"
 	"transfers-api/internal/repositories"
 )
 
 var ErrInvalidAmount = errors.New("monto inválido")
 
 type TransferService struct {
-	repo repositories.Repository
+	repo     repositories.Repository
+	producer *queue.RabbitMQProducer
 }
 
-func NewTransferService(r repositories.Repository) *TransferService {
-	return &TransferService{repo: r}
+func NewTransferService(repo repositories.Repository, producer *queue.RabbitMQProducer) *TransferService {
+	return &TransferService{
+		repo:     repo,
+		producer: producer,
+	}
 }
-
 func (s *TransferService) Create(t *models.Transfer) error {
-	if t == nil {
-		return errors.New("transfer es nil")
+	err := s.repo.Create(t)
+	if err != nil {
+		return err
 	}
-	if t.Amount <= 0 {
-		return ErrInvalidAmount
+
+	if s.producer != nil {
+		body, _ := json.Marshal(t)
+		if pubErr := s.producer.Publish(body); pubErr != nil {
+			fmt.Printf("Advertencia: No se pudo enviar a RabbitMQ: %v\n", pubErr)
+		}
+	} else {
+		fmt.Println("Advertencia: El servicio no tiene un productor de RabbitMQ configurado")
 	}
-	return s.repo.Create(t)
+
+	return nil
 }
 
 func (s *TransferService) GetByID(id string) (*models.Transfer, error) {

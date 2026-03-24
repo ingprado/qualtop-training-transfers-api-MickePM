@@ -15,10 +15,11 @@ type CachedTransferRepository struct {
 	logger   *zap.SugaredLogger
 }
 
-func NewCachedRepository(repo Repository) *CachedTransferRepository {
+func NewCachedRepository(repo Repository, logger *zap.SugaredLogger) *CachedTransferRepository {
 	return &CachedTransferRepository{
 		realRepo: repo,
 		cache:    cache.New(1*time.Minute, 2*time.Minute),
+		logger:   logger,
 	}
 }
 

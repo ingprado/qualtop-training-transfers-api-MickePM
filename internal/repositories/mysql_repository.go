@@ -20,11 +20,10 @@ func NewMySQLRepository(db *sql.DB) *MySQLRepository { // Recibe la conexión de
 }
 
 func (r *MySQLRepository) Create(t *models.Transfer) error { //funcion para crear registro
-	if t == nil || t.ID == "" { //valiudamos el id que no sea null
-		return ErrInvalid // envia mensaje generico ya precargado
+	if t == nil || t.ID == "" {
+		return ErrInvalid
 	}
 
-	// Usamos Exec para insertar en la tabla real
 	query := "INSERT INTO transfers (id, sender_id, receiver_id, currency, amount, state) VALUES (?, ?, ?, ?, ?, ?)"
 	_, err := r.db.Exec(query, t.ID, t.SenderID, t.ReceiverID, int(t.Currency), t.Amount, t.State)
 	if err != nil {
