@@ -23,6 +23,9 @@ func NewTransferService(repo repositories.Repository, producer *queue.RabbitMQPr
 	}
 }
 func (s *TransferService) Create(t *models.Transfer) error {
+	if t.Amount <= 0 {
+		return fmt.Errorf("el monto de la transferencia debe ser mayor a cero")
+	}
 	err := s.repo.Create(t)
 	if err != nil {
 		return err

@@ -15,7 +15,7 @@ CREATE TABLE transfers (
     id VARCHAR(50) NOT NULL,                      
     sender_id VARCHAR(50) NOT NULL,
     receiver_id VARCHAR(50) NOT NULL,
-    currency VARCHAR(10) NOT NULL,                
+    currency VARCHAR(10)  NULL,                
     amount DECIMAL(15, 2) NOT NULL,
     state VARCHAR(20) NOT NULL
 );
