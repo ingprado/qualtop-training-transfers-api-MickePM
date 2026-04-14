@@ -13,7 +13,7 @@ services:
       MYSQL_PASSWORD: miguel_password
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  //LINEA PARA QUE CREE LA TABLA DEL MYSQL
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql  #LINEA PARA QUE CREE LA TABLA DEL MYSQL
 
   # --- Servidor de Mensajería ---
   rabbitmq: # <--- Ahora está alineado con los demás servicios
